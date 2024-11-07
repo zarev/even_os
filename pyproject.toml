@@ -1,0 +1,14 @@
+[project]
+name = "repl-nix-even-glasses-clone"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.11"
+dependencies = [
+    "bleak>=0.22.3",
+    "even-glasses",
+    "flet>=0.24.1",
+    "pydantic>=2.9.2",
+]
+
+[tool.uv.sources]
+even-glasses = { path = "even_glasses" }

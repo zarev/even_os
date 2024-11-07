@@ -1,0 +1,74 @@
+modules = ["python-3.11"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Clone Repository"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Test Glasses"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Prototype App"
+
+[[workflows.workflow]]
+name = "Clone Repository"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python clone_repo.py"
+
+[[workflows.workflow]]
+name = "Test Glasses"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python test_glasses.py"
+
+[[workflows.workflow]]
+name = "Prototype App"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 prototype.py"
+waitForPort = 8550
+
+[deployment]
+run = ["sh", "-c", "python clone_repo.py"]
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 8550
+externalPort = 80

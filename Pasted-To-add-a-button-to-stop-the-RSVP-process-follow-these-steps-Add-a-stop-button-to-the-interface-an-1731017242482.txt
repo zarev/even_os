@@ -1,0 +1,76 @@
+To add a button to stop the RSVP process, follow these steps:
+
+Add a stop button to the interface and ensure it is initially disabled.
+Enable the stop button when the RSVP process starts.
+Define a stop event handler that stops the RSVP process when the button is clicked.
+Here's how you can implement these steps in your existing code:
+
+Add the stop button:
+Update the UI creation code to include a new button for stopping RSVP. You will need to declare and integrate it in the create_rsvp_section() function.
+
+Enable the stop button in start_rsvp function:
+Enable the stop button when RSVP starts and disable it when RSVP stops.
+
+Define the event handler:
+Create a new event handler to stop the RSVP process and update the status.
+
+Code Changes
+In main.py:
+
+Add the stop button in the create_rsvp_section() and ensure it's initially disabled:
+
+stop_rsvp_button = ft.ElevatedButton(text="Stop RSVP", disabled=True)
+def create_rsvp_section():
+    # Add stop_rsvp_button to the row or column with other buttons
+    return ft.Column(
+        [
+            rsvp_header,
+            config_inputs,
+            rsvp_text,
+            ft.Row(
+                [start_rsvp_button, stop_rsvp_button, rsvp_status],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=20,
+            ),
+        ],
+        spacing=10,
+    ), words_per_group, wpm_input, padding_char, rsvp_text, start_rsvp_button, stop_rsvp_button, rsvp_status
+Enable the stop_rsvp_button in the start_rsvp function and set up a cancellation mechanism:
+
+async def start_rsvp(e):
+    try:
+        # Configure RSVP parameters...
+        # Enable stop button
+        stop_rsvp_button.disabled = False
+        start_rsvp_button.disabled = True
+        rsvp_status.value = "RSVP Status: Running..."
+        page.update()
+        # Use a task to run the RSVP and allow cancellation
+        rsvp_task = asyncio.create_task(send_rsvp(manager, rsvp_text.value, config))
+        success = await rsvp_task
+        # Check the result and update status appropriately
+        if success:
+            rsvp_status.value = "RSVP Status: Complete"
+            log_message("RSVP completed successfully.")
+        else:
+            rsvp_status.value = "RSVP Status: Failed"
+            log_message("RSVP failed.")
+    finally:
+        # Disable stop button, enable start button after completion or failure
+        start_rsvp_button.disabled = False
+        stop_rsvp_button.disabled = True
+        page.update()
+Create a stop event handler to cancel the RSVP task:
+
+async def stop_rsvp(e):
+    if rsvp_task and not rsvp_task.done():
+        rsvp_task.cancel()
+        rsvp_status.value = "RSVP Status: Stopped"
+        log_message("RSVP stopped by user request.")
+        start_rsvp_button.disabled = False
+        stop_rsvp_button.disabled = True
+        page.update()
+Assign the stop button event handler:
+
+stop_rsvp_button.on_click = stop_rsvp
+These changes will add a stop button to your RSVP system, allowing users to stop the RSVP process when it's running.
