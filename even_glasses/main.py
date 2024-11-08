@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 manager = GlassesManager(left_address=None, right_address=None)
 openai_client = OpenAI(api_key=os.environ.get("OPENAI_EVEN_OS_KEY"))
 
+# Initialize conversation history
+conversation_history = []
+
 async def main(page: ft.Page):
     page.title = "Glasses Control Panel"
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
@@ -203,28 +206,33 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             spacing=10,
         ), words_per_group, wpm_input, padding_char, rsvp_text, start_rsvp_button, rsvp_status
 
-    # OpenAI Chat Section
+    # OpenAI Chat Section with History
     def create_openai_chat_section():
         chat_header = ft.Text(
             value="OpenAI Chat", size=18, weight=ft.FontWeight.BOLD
         )
         chat_input = ft.TextField(
             label="Enter your message",
-            width=400,
+            width=750,
             multiline=True,
             min_lines=2,
             max_lines=5
         )
-        chat_response = ft.TextField(
-            label="AI Response",
-            width=400,
+        chat_history = ft.TextField(
+            label="Conversation History",
+            width=750,
             multiline=True,
             read_only=True,
-            min_lines=2,
-            max_lines=10
+            min_lines=5,
+            max_lines=15,
+            text_size=14
         )
         send_chat_button = ft.ElevatedButton(
             text="Send to OpenAI",
+            disabled=False
+        )
+        clear_history_button = ft.ElevatedButton(
+            text="Clear History",
             disabled=False
         )
 
@@ -232,15 +240,15 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             [
                 chat_header,
                 chat_input,
-                chat_response,
+                chat_history,
                 ft.Row(
-                    [send_chat_button],
+                    [send_chat_button, clear_history_button],
                     alignment=ft.MainAxisAlignment.CENTER,
                     spacing=20,
                 ),
             ],
             spacing=10,
-        ), chat_input, chat_response, send_chat_button
+        ), chat_input, chat_history, send_chat_button, clear_history_button
 
     # Create all sections
     status_section, left_status, right_status = create_status_section()
@@ -265,7 +273,7 @@ End of demo text. Thank you for trying out the RSVP feature!"""
         start_rsvp_button,
         rsvp_status,
     ) = create_rsvp_section()
-    chat_section, chat_input, chat_response, send_chat_button = create_openai_chat_section()
+    chat_section, chat_input, chat_history, send_chat_button, clear_history_button = create_openai_chat_section()
 
     # Update Status Function
     def on_status_changed():
@@ -402,22 +410,42 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             start_rsvp_button.disabled = False
             page.update()
 
+    def update_chat_history():
+        """Update the chat history display"""
+        formatted_history = ""
+        for msg in conversation_history:
+            role = "You" if msg["role"] == "user" else "AI"
+            formatted_history += f"{role}: {msg['content']}\n\n"
+        chat_history.value = formatted_history
+        page.update()
+
     async def send_chat_message(e):
         if not chat_input.value:
             return
 
+        user_message = chat_input.value.strip()
         send_chat_button.disabled = True
-        chat_response.value = "Thinking..."
+        chat_input.value = ""
         page.update()
 
         try:
+            # Add user message to history
+            conversation_history.append({"role": "user", "content": user_message})
+            update_chat_history()
+
+            # Create messages array with full conversation history
+            messages = [{"role": m["role"], "content": m["content"]} for m in conversation_history]
+            
             response = openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": chat_input.value}]
+                model="gpt-4o-mini",  # Using the recommended model
+                messages=messages
             )
             
             ai_response = response.choices[0].message.content
-            chat_response.value = ai_response
+            
+            # Add AI response to history
+            conversation_history.append({"role": "assistant", "content": ai_response})
+            update_chat_history()
             
             # Also send to glasses if connected
             if connected:
@@ -427,15 +455,19 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             log_message(f"OpenAI chat request completed successfully")
         except OpenAIError as e:
             error_message = f"OpenAI API Error: {str(e)}"
-            chat_response.value = error_message
             log_message(error_message)
         except Exception as e:
             error_message = f"Error processing chat request: {str(e)}"
-            chat_response.value = error_message
             log_message(error_message)
         finally:
             send_chat_button.disabled = False
             page.update()
+
+    def clear_chat_history(e):
+        """Clear the conversation history"""
+        conversation_history.clear()
+        update_chat_history()
+        log_message("Chat history cleared")
 
     # Assign Event Handlers
     connect_button.on_click = connect_glasses
@@ -444,6 +476,7 @@ End of demo text. Thank you for trying out the RSVP feature!"""
     send_notification_button.on_click = send_custom_notification
     start_rsvp_button.on_click = start_rsvp
     send_chat_button.on_click = send_chat_message
+    clear_history_button.on_click = clear_chat_history
 
     # Main Layout
     main_content = ft.Column(
