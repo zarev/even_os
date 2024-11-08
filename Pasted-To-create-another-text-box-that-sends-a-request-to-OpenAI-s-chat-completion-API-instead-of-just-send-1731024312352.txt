@@ -1,0 +1,82 @@
+To create another text box that sends a request to OpenAI's chat completion API instead of just sending a manual message, you need to modify the existing user interface and incorporate the logic to interact with the OpenAI API. Here's a step-by-step plan and the necessary code:
+
+Add a New Text Input Section:
+Create an additional input section where users can enter a request that will be sent to the OpenAI API.
+
+Invoke OpenAI API:
+Modify the send_message function to make a request to OpenAI's chat completion API when users submit a request.
+
+Display API Response:
+Show the response from the OpenAI API in the application interface.
+
+Here's how you can implement these changes:
+
+import os
+import ft
+from openai import OpenAI
+# Initialize OpenAI client
+openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+async def send_openai_request(manager, user_message: str) -> str:
+    """Send a request to OpenAI's chat completion API."""
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "user", "content": user_message}
+            ]
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Error sending message to OpenAI: {str(e)}")
+        return None
+def create_openai_request_section():
+    openai_input = ft.TextField(label="Request to OpenAI", width=400)
+    openai_send_button = ft.ElevatedButton(text="Send to OpenAI", disabled=True)
+    return ft.Column(
+        [
+            openai_input,
+            ft.Row(
+                [openai_send_button],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=20,
+            ),
+        ],
+        spacing=10,
+    ), openai_input, openai_send_button
+async def send_openai_message(e):
+    if not openai_input.value:
+        return
+    openai_send_button.disabled = True
+    page.update()
+    try:
+        response = await send_openai_request(manager, openai_input.value)
+        if response:
+            log_message(f"OpenAI response: {response}")
+            openai_input.value = ""
+        else:
+            log_message("Failed to get response from OpenAI")
+    except Exception as e:
+        log_message(f"Error sending message to OpenAI: {str(e)}")
+    finally:
+        openai_send_button.disabled = False
+        page.update()
+# Add both sections to your layout
+def main():
+    connect_buttons, connect_button, disconnect_button = create_connection_buttons()
+    message_section, message_input, send_button = create_message_section()
+    openai_section, openai_input, openai_send_button = create_openai_request_section()
+    send_button.on_click = send_message
+    openai_send_button.on_click = send_openai_message
+    page.add(connect_buttons)
+    page.add(message_section)
+    page.add(openai_section)
+# Call the main function to initialize the application
+if __name__ == "__main__":
+    main()
+Explanation:
+OpenAI Client Initialization: The openai_client is initialized using the OpenAI class with an API key.
+send_openai_request Function: This function sends a request to the OpenAI chat completion endpoint and returns the response.
+UI Modification: A new text field and button for sending OpenAI requests are added with create_openai_request_section().
+send_openai_message Function: This handles the click event for sending requests to OpenAI and processes the response.
+UI Integration: Add both message sections (message_section and openai_section) to the layout in main() function.
+Make sure you have the openai library installed and the OPENAI_API_KEY environment variable set up in your environment.
