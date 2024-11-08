@@ -1,6 +1,8 @@
 import asyncio
 import json
 import flet as ft
+import os
+from openai import OpenAI, OpenAIError
 from even_glasses.bluetooth_manager import GlassesManager
 from even_glasses.commands import send_text, send_rsvp, send_notification
 from even_glasses.models import NCSNotification, RSVPConfig
@@ -9,8 +11,9 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize GlassesManager
+# Initialize GlassesManager and OpenAI client
 manager = GlassesManager(left_address=None, right_address=None)
+openai_client = OpenAI(api_key=os.environ.get("OPENAI_EVEN_OS_KEY"))
 
 async def main(page: ft.Page):
     page.title = "Glasses Control Panel"
@@ -200,7 +203,46 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             spacing=10,
         ), words_per_group, wpm_input, padding_char, rsvp_text, start_rsvp_button, rsvp_status
 
-    # Create Components
+    # OpenAI Chat Section
+    def create_openai_chat_section():
+        chat_header = ft.Text(
+            value="OpenAI Chat", size=18, weight=ft.FontWeight.BOLD
+        )
+        chat_input = ft.TextField(
+            label="Enter your message",
+            width=400,
+            multiline=True,
+            min_lines=2,
+            max_lines=5
+        )
+        chat_response = ft.TextField(
+            label="AI Response",
+            width=400,
+            multiline=True,
+            read_only=True,
+            min_lines=2,
+            max_lines=10
+        )
+        send_chat_button = ft.ElevatedButton(
+            text="Send to OpenAI",
+            disabled=False
+        )
+
+        return ft.Column(
+            [
+                chat_header,
+                chat_input,
+                chat_response,
+                ft.Row(
+                    [send_chat_button],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=20,
+                ),
+            ],
+            spacing=10,
+        ), chat_input, chat_response, send_chat_button
+
+    # Create all sections
     status_section, left_status, right_status = create_status_section()
     connection_buttons, connect_button, disconnect_button = create_connection_buttons()
     message_section, message_input, send_button = create_message_section()
@@ -223,6 +265,7 @@ End of demo text. Thank you for trying out the RSVP feature!"""
         start_rsvp_button,
         rsvp_status,
     ) = create_rsvp_section()
+    chat_section, chat_input, chat_response, send_chat_button = create_openai_chat_section()
 
     # Update Status Function
     def on_status_changed():
@@ -272,7 +315,7 @@ End of demo text. Thank you for trying out the RSVP feature!"""
     async def disconnect_glasses(e):
         disconnect_button.disabled = True
         page.update()
-        await manager.disconnect_all()  # Updated method name
+        await manager.disconnect_all()
         left_status.value = "Left Glass: Disconnected"
         right_status.value = "Right Glass: Disconnected"
         log_message("Disconnected all glasses.")
@@ -359,12 +402,48 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             start_rsvp_button.disabled = False
             page.update()
 
+    async def send_chat_message(e):
+        if not chat_input.value:
+            return
+
+        send_chat_button.disabled = True
+        chat_response.value = "Thinking..."
+        page.update()
+
+        try:
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": chat_input.value}]
+            )
+            
+            ai_response = response.choices[0].message.content
+            chat_response.value = ai_response
+            
+            # Also send to glasses if connected
+            if connected:
+                await send_text(manager, ai_response)
+                log_message(f"Sent AI response to glasses")
+            
+            log_message(f"OpenAI chat request completed successfully")
+        except OpenAIError as e:
+            error_message = f"OpenAI API Error: {str(e)}"
+            chat_response.value = error_message
+            log_message(error_message)
+        except Exception as e:
+            error_message = f"Error processing chat request: {str(e)}"
+            chat_response.value = error_message
+            log_message(error_message)
+        finally:
+            send_chat_button.disabled = False
+            page.update()
+
     # Assign Event Handlers
     connect_button.on_click = connect_glasses
     disconnect_button.on_click = disconnect_glasses
     send_button.on_click = send_message
     send_notification_button.on_click = send_custom_notification
     start_rsvp_button.on_click = start_rsvp
+    send_chat_button.on_click = send_chat_message
 
     # Main Layout
     main_content = ft.Column(
@@ -377,6 +456,8 @@ End of demo text. Thank you for trying out the RSVP feature!"""
             notification_section,
             ft.Divider(),
             rsvp_section,
+            ft.Divider(),
+            chat_section,
             ft.Divider(),
             ft.Text(value="Event Log:", size=16, weight=ft.FontWeight.BOLD),
             log_output,
