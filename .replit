@@ -91,7 +91,6 @@ channel = "stable-24_05"
 [[ports]]
 localPort = 8080
 externalPort = 8080
-exposeLocalhost = true
 
 [[ports]]
 localPort = 8550

@@ -1,5 +1,7 @@
 {pkgs}: {
   deps = [
+    pkgs.gdk-pixbuf
+    pkgs.atk
     pkgs.harfbuzz
     pkgs.cairo
     pkgs.pango

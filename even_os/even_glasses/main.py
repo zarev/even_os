@@ -19,17 +19,31 @@ openai_client = OpenAI(api_key=os.environ.get("OPENAI_EVEN_OS_KEY"))
 conversation_history = []
 
 async def main(page: ft.Page):
+    # Basic page configuration
     page.title = "Glasses Control Panel"
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
     page.padding = 20
-    page.scroll = ft.ScrollMode.AUTO
-    page.window_width = 1000
-    page.window_height = 800
     page.theme_mode = ft.ThemeMode.LIGHT
     page.bgcolor = ft.colors.WHITE
-    page.fonts = {
-        "Roboto": "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
-    }
+    
+    # Configure window size
+    page.window = ft.Window(
+        width=1000,
+        height=800,
+        min_width=600,
+        min_height=400,
+    )
+    
+    # Web-specific configurations
+    page.theme = ft.Theme(
+        color_scheme_seed=ft.colors.BLUE,
+        font_family="Roboto",
+        use_material3=True,
+    )
+    
+    # Make layout responsive
+    page.expand = True
+    page.scroll = ft.ScrollMode.ADAPTIVE
 
     connected = False
 
@@ -55,7 +69,7 @@ async def main(page: ft.Page):
         left_status = ft.Text(value="Left Glass: Disconnected", size=14)
         right_status = ft.Text(value="Right Glass: Disconnected", size=14)
 
-        # Add Connect button
+        # Add Connect button with web-friendly styling
         connect_button = ft.ElevatedButton(
             text="Connect To Glasses",
             width=200,
@@ -148,14 +162,8 @@ async def main(page: ft.Page):
             width=200,
             disabled=True,
             style=ft.ButtonStyle(
-                color={
-                    ft.MaterialState.DEFAULT: ft.colors.WHITE,
-                    ft.MaterialState.DISABLED: ft.colors.GREY_400,
-                },
-                bgcolor={
-                    ft.MaterialState.DEFAULT: ft.colors.BLUE_400,
-                    ft.MaterialState.DISABLED: ft.colors.GREY_200,
-                },
+                color=ft.colors.WHITE,
+                bgcolor=ft.colors.BLUE_400,
             ),
         )
         clear_button = ft.ElevatedButton(
@@ -167,18 +175,16 @@ async def main(page: ft.Page):
             ),
         )
         
-        button_row = ft.Row(
-            [send_button, clear_button],
-            alignment=ft.MainAxisAlignment.CENTER,
-            spacing=20,
-        )
-        
         return ft.Column(
             [
                 chat_header,
                 chat_input,
                 chat_history,
-                button_row,
+                ft.Row(
+                    [send_button, clear_button],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=20,
+                ),
             ],
             spacing=10,
         ), chat_input, chat_history, send_button, clear_button
@@ -293,7 +299,7 @@ async def main(page: ft.Page):
     send_button.on_click = send_to_openai
     clear_button.on_click = clear_chat_history
 
-    # Main Layout
+    # Main Layout with web-specific responsive design
     main_content = ft.Column(
         [
             status_section,
@@ -318,4 +324,13 @@ async def main(page: ft.Page):
     asyncio.create_task(status_monitor())
 
 if __name__ == "__main__":
-    ft.app(target=main, port=8080, host="0.0.0.0")
+    ft.app(
+        target=main,
+        port=8080,
+        host="0.0.0.0",
+        view=ft.AppView.WEB_BROWSER,
+        web_renderer="html",
+        route_url_strategy="path",
+        assets_dir="assets",
+        web_renderer_config={"canvaskit_enabled": False}  # Disable CanvasKit to avoid GTK dependencies
+    )

@@ -4,9 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "asyncio>=3.4.3",
     "bleak>=0.22.3",
     "even-glasses",
-    "flet>=0.24.1",
+    "flet>=0.21.0",
     "openai>=1.54.3",
     "pydantic>=2.9.2",
 ]
