@@ -54,10 +54,69 @@ async def main(page: ft.Page):
         )
         left_status = ft.Text(value="Left Glass: Disconnected", size=14)
         right_status = ft.Text(value="Right Glass: Disconnected", size=14)
+
+        # Add Connect button
+        connect_button = ft.ElevatedButton(
+            text="Connect To Glasses",
+            width=200,
+            style=ft.ButtonStyle(
+                color=ft.colors.WHITE,
+                bgcolor=ft.colors.GREEN_400,
+            ),
+        )
+
+        async def connect_to_glasses(e):
+            try:
+                log_message("Initiating glasses connection...")
+                connect_button.disabled = True
+                page.update()
+
+                # Start scanning and connection process
+                await manager.start_scanning()
+                await asyncio.sleep(2)  # Give some time for scanning
+                
+                # Try to connect to found devices
+                devices = manager.get_discovered_devices()
+                if not devices:
+                    log_message("No glasses found nearby. Please ensure glasses are powered on and in range.")
+                    return
+
+                connection_success = False
+                for device in devices:
+                    try:
+                        if "left" in device.name.lower():
+                            await manager.connect_left(device.address)
+                            connection_success = True
+                        elif "right" in device.name.lower():
+                            await manager.connect_right(device.address)
+                            connection_success = True
+                    except Exception as e:
+                        log_message(f"Error connecting to {device.name}: {str(e)}")
+
+                if connection_success:
+                    log_message("Successfully connected to glasses!")
+                else:
+                    log_message("Could not establish connection with glasses.")
+
+            except Exception as e:
+                log_message(f"Error during connection: {str(e)}")
+            finally:
+                connect_button.disabled = False
+                await manager.stop_scanning()
+                page.update()
+
+        connect_button.on_click = connect_to_glasses
+
         return (
-            ft.Column([status_header, left_status, right_status], spacing=5),
+            ft.Column([
+                status_header,
+                left_status,
+                right_status,
+                connect_button
+            ], spacing=5),
             left_status,
             right_status,
+            connect_button
         )
 
     # OpenAI Chat Section
@@ -125,7 +184,7 @@ async def main(page: ft.Page):
         ), chat_input, chat_history, send_button, clear_button
 
     # Create Components
-    status_section, left_status, right_status = create_status_section()
+    status_section, left_status, right_status, connect_button = create_status_section()
     chat_section, chat_input, chat_history, send_button, clear_button = create_chat_section()
 
     async def send_to_openai(e):
